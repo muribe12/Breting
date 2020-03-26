@@ -10,5 +10,5 @@ WHEN floor(datediff(min(s.ss__processed_ts), max(s.ss__processed_ts))) > 14 then
 ELSE 'WITHIN 2 WEEKS' end as timing_status
 FROM vmc_dw.fact_sddc_daily s
 join vmc_dw.dim_org o ON (s.dim_org_id = o.dim_org_id )
-Group by s.dim_org_id,o.aws_account_number,o.org_type 
+Group by s.dim_org_id,o.aws_account_number,o.org_type
 limit 10
