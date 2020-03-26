@@ -1,0 +1,11 @@
+Select dim_org_id,
+sum(host_count) as hours, 
+sum(host_count) * 3 as cost,
+min(ss__processed_ts) as start_date,
+max(ss__processed_ts) as end_date,
+CASE WHEN floor(datediff(min(ss__processed_ts), max(ss__processed_ts))) > 21 then '**MORE THAN 3 WEEKS**'
+WHEN floor(datediff(min(ss__processed_ts), max(ss__processed_ts))) > 14 then 'OVER 2 WEEKS'
+ELSE 'WITHIN 2 WEEKS' end as timing_status
+FROM vmc_dw.fact_sddc_daily 
+Group by dim_org_id 
+limit 10
