@@ -1,0 +1,42 @@
+WITH mel AS
+		(
+			SELECT s.dim_org_id,
+				o.aws_account_number,
+				o.org_type,
+				p.cloud_provider,
+				p.cloud_provider_region,
+				sum(s.host_count) as hours, 
+				sum(s.host_count) * 3 as cost,
+				min(s.dim_date_id ) as start_date,
+				max(s.dim_date_id ) as end_date,
+				CASE WHEN floor(datediff(min(s.dim_date_id ), max(s.dim_date_id ))) > 21 then '**MORE THAN 3 WEEKS**'
+					WHEN floor(datediff(min(s.dim_date_id ), max(s.dim_date_id ))) > 14 then 'OVER 2 WEEKS'
+				ELSE 'WITHIN 2 WEEKS' end as timing_status
+			FROM vmc_dw.fact_sddc_daily s
+				JOIN vmc_dw.dim_org o ON (s.dim_org_id = o.dim_org_id )
+				JOIN vmc_dw.dim_sddc_h p ON (s.dim_org_id = p.dim_org_id)
+			--WHERE s.dim_org_id LIKE '7b73658d-67fe-4ac3-a662-f3713c979652'
+			GROUP BY s.dim_org_id,o.aws_account_number,o.org_type,p.cloud_provider, p.cloud_provider_region 
+),
+
+Oppty AS 
+		(    
+		SELECT  a.id, 
+				a.opportunity_id__c, a.stagename , a.account_industry, 
+				a.account_name, a.fiscal_period__c as FiscalQtr_Oppty
+				--, b.set_manager__r_name 
+		FROM history.vmc_vmstar_opportunity a limit 10
+			--JOIN history.vmc_vmstar_opportunity_extension_c b ON (a.id=b.id)
+)
+
+SELECT tv.id, tv.compliance,tv.customer_name, tv.org_id, tv.region, 
+		tv.se_specialist, tv.services, tv.status, tv.use_case, 'tv.timestamp', 
+		COALESCE(tv.opportunity_id,tv.sfdc_oppty_id_raw) as 'opty_id',
+		h.dim_org_id, h.aws_account_number, h.org_type, h.hours, h.cost, h.start_date, 
+		h.end_date, h.timing_status, o.opportunity_id__c, o.account_name, o.account_industry,
+		o.fiscalqtr_oppty, o.stagename
+		FROM history.vmc_set_tech_validation tv
+		JOIN mel h ON (tv.org_id = h.dim_org_id)
+		JOIN oppty o ON (tv.sfdc_oppty_id_raw = o.id)
+		
+limit 10
