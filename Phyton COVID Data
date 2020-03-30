@@ -1,0 +1,31 @@
+import pandas as pd
+import datetime
+from datetime import date, timedelta
+
+
+start_date = datetime.date(2020, 1, 22)
+today = datetime.datetime.now()
+end_date = datetime.date(today.year, today.month, today.day)
+input_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/'
+output_file_path = r'covid_data.csv'
+dfOutput = pd.DataFrame()
+
+
+def date_range(start_date, end_date):
+    for n in range(int ((end_date - start_date).days)):
+        yield start_date + timedelta(n)
+
+
+for single_date in date_range(start_date, end_date):
+    dfTemp = pd.read_table(input_url + single_date.strftime("%m-%d-%Y") + '.csv', delimiter=',')
+    print('File: ' + input_url + single_date.strftime("%m-%d-%Y") + '.csv' + '. Rows: ' + str(len(dfTemp)))
+    dfTemp['File Name'] = single_date.strftime("%m-%d-%Y") + '.csv'
+    dfTemp = dfTemp.rename(columns={'Province_State': 'Province/State'})
+    dfTemp = dfTemp.rename(columns={'Country_Region': 'Country/Region'})
+    dfTemp = dfTemp.rename(columns={'Last_Update': 'Last Update'})
+    dfTemp = dfTemp.rename(columns={'Lat': 'Latitude'})
+    dfTemp = dfTemp.rename(columns={'Long_': 'Longitude'})
+
+    dfOutput = dfOutput.append(dfTemp, ignore_index=True)
+
+dfOutput.to_csv(output_file_path, index=False, header=True)
