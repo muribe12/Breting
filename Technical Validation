@@ -1,0 +1,57 @@
+WITH mel AS
+		(
+			SELECT s.dim_org_id,
+				o.aws_account_number,
+				o.org_type,
+				p.cloud_provider,
+				p.cloud_provider_region,
+				sum(s.host_count) as hours, 
+				sum(s.host_count) * 3 as cost,
+				min(s.dim_date_id ) as start_date,
+				max(s.dim_date_id ) as end_date,
+				CASE WHEN floor(datediff(min(s.dim_date_id ), max(s.dim_date_id ))) > 21 then '**MORE THAN 3 WEEKS**'
+					WHEN floor(datediff(min(s.dim_date_id ), max(s.dim_date_id ))) > 14 then 'OVER 2 WEEKS'
+				ELSE 'WITHIN 2 WEEKS' end as timing_status
+				
+			FROM vmc_dw.fact_sddc_daily s
+				JOIN vmc_dw.dim_org o ON (s.dim_org_id = o.dim_org_id )
+				JOIN vmc_dw.dim_sddc_h p ON (s.dim_org_id = p.dim_org_id)
+			--WHERE s.dim_org_id LIKE '907d8650-4189-4a22-b42f-f8de7e4ca556'
+			GROUP BY s.dim_org_id,o.aws_account_number,o.org_type,p.cloud_provider, p.cloud_provider_region 
+),
+
+Oppty AS 
+		(    
+		SELECT  a.id, 
+				a.opportunity_id__c, a.stagename , a.account_industry, 
+				a.account_name, a.fiscal_period__c as FiscalQtr_Oppty
+				--, b.set_manager__r_name 
+		FROM history.vmc_vmstar_opportunity a
+			--JOIN history.vmc_vmstar_opportunity_extension_c b ON (a.id=b.id)
+)
+
+SELECT tv.id as _id,
+		tv.customer_name, tv.org_id,
+		tv.se_specialist, tv.services, tv.status, 
+		tv.compliance, tv.region, 
+		CASE WHEN locate('|',tv.compliance) > 1 THEN left(tv.compliance, locate('|',tv.compliance)-1) ELSE tv.compliance END as primary_compliance,
+		CASE WHEN locate('|',tv.use_case) > 1 THEN left(tv.use_case, locate('|',tv.use_case)-1) ELSE tv.use_case END as primary_use_case, 
+		CASE WHEN locate('|',tv.region) > 1 THEN left(tv.region, locate('|',tv.region)-1) ELSE tv.region END as primary_aws_region,
+        CASE WHEN locate('|',tv.use_case) > 0 THEN split_part(tv.use_case,'|',2) END as secondary_use_case,
+        CASE WHEN locate('|',tv.region) > 0 THEN split_part(tv.region,'|',2) END as secondary_aws_region,
+        CASE WHEN locate('|',tv.se_specialist) > 1 THEN LEFT(tv.se_specialist, locate('|',tv.se_specialist)-1) ELSE tv.se_specialist END as se_technical_specialist,
+		COALESCE(tv.opportunity_id,tv.sfdc_oppty_id_raw) as 'sfdc_oppty_id_raw',
+		h.dim_org_id, h.aws_account_number as aws_acc_no,
+		h.org_type as customer_type,
+		h.hours, h.cost, h.start_date, 
+		h.end_date, h.timing_status, o.opportunity_id__c as opportunity_id,
+		o.account_name, o.account_industry as opportunity_industry,
+		o.fiscalqtr_oppty, o.stagename as 'opportunity_stage', cal.year2qtrname as fsical_quarter
+		FROM history.vmc_set_tech_validation tv
+		JOIN mel h ON (tv.org_id = h.dim_org_id)
+		JOIN oppty o ON (tv.sfdc_oppty_id_raw = o.id)
+		 LEFT JOIN vmc_dw.dim_date cal
+    		ON (h.start_date=dim_date_id )
+		--WHERE h.org_id LIKE '907d8650-4189-4a22-b42f-f8de7e4ca556'		
+--ORDER BY h.end_date DESC
+
