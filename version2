@@ -12,6 +12,7 @@ WITH mel AS
 				CASE WHEN floor(datediff(min(s.dim_date_id ), max(s.dim_date_id ))) > 21 then '**MORE THAN 3 WEEKS**'
 					WHEN floor(datediff(min(s.dim_date_id ), max(s.dim_date_id ))) > 14 then 'OVER 2 WEEKS'
 				ELSE 'WITHIN 2 WEEKS' end as timing_status
+				--CASE 
 			FROM vmc_dw.fact_sddc_daily s
 				JOIN vmc_dw.dim_org o ON (s.dim_org_id = o.dim_org_id )
 				JOIN vmc_dw.dim_sddc_h p ON (s.dim_org_id = p.dim_org_id)
@@ -29,8 +30,13 @@ Oppty AS
 			--JOIN history.vmc_vmstar_opportunity_extension_c b ON (a.id=b.id)
 )
 
-SELECT tv.id, tv.compliance,tv.customer_name, tv.org_id, tv.region, 
-		tv.se_specialist, tv.services, tv.status, tv.use_case, 'tv.timestamp', 
+SELECT tv.id,tv.customer_name, tv.org_id,
+		tv.se_specialist, tv.services, tv.status, 
+		CASE WHEN Charindex('|',compliance) > 1 THEN left(compliance, Charindex('|',compliance)-1) ELSE compliance END as primary_compliance,
+		CASE WHEN Charindex('|',tv.use_case) > 1 THEN left(tv.use_case, Charindex('|',tv.use_case)-1) ELSE tv.use_case END as primary_use_case, 
+		CASE WHEN Charindex('|',tv.region) > 1 THEN left(tv.region, Charindex('|',tv.region)-1) ELSE tv.region END as primary_aws_region,
+        CASE WHEN Charindex('|',tv.use_case) > 0 THEN split_part(tv.use_case+'|','|',2) END as secondary_use_case,
+        CASE WHEN Charindex('|',tv.region) > 0 THEN split_part(tv.region+'|','|',2) END as secondary_aws_region,
 		COALESCE(tv.opportunity_id,tv.sfdc_oppty_id_raw) as 'opty_id',
 		h.dim_org_id, h.aws_account_number, h.org_type, h.hours, h.cost, h.start_date, 
 		h.end_date, h.timing_status, o.opportunity_id__c, o.account_name, o.account_industry,
@@ -38,3 +44,5 @@ SELECT tv.id, tv.compliance,tv.customer_name, tv.org_id, tv.region,
 		FROM history.vmc_set_tech_validation tv
 		JOIN mel h ON (tv.org_id = h.dim_org_id)
 		JOIN oppty o ON (tv.sfdc_oppty_id_raw = o.id)
+		
+ORDER BY h.end_date DESC
