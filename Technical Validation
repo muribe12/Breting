@@ -38,9 +38,9 @@ SELECT tv.id as _id,
 		CASE WHEN locate('|',tv.compliance) > 1 THEN left(tv.compliance, locate('|',tv.compliance)-1) ELSE tv.compliance END as primary_compliance,
 		CASE WHEN locate('|',tv.use_case) > 1 THEN left(tv.use_case, locate('|',tv.use_case)-1) ELSE tv.use_case END as primary_use_case, 
 		CASE WHEN locate('|',tv.region) > 1 THEN left(tv.region, locate('|',tv.region)-1) ELSE tv.region END as primary_aws_region,
-        CASE WHEN locate('|',tv.use_case) > 0 THEN split_part(tv.use_case,'|',2) END as secondary_use_case,
-        CASE WHEN locate('|',tv.region) > 0 THEN split_part(tv.region,'|',2) END as secondary_aws_region,
-        CASE WHEN locate('|',tv.se_specialist) > 1 THEN LEFT(tv.se_specialist, locate('|',tv.se_specialist)-1) ELSE tv.se_specialist END as se_technical_specialist,
+        	CASE WHEN locate('|',tv.use_case) > 0 THEN split_part(tv.use_case,'|',2) END as secondary_use_case,
+        	CASE WHEN locate('|',tv.region) > 0 THEN split_part(tv.region,'|',2) END as secondary_aws_region,
+        	CASE WHEN locate('|',tv.se_specialist) > 1 THEN LEFT(tv.se_specialist, locate('|',tv.se_specialist)-1) ELSE tv.se_specialist END as se_technical_specialist,
 		COALESCE(tv.opportunity_id,tv.sfdc_oppty_id_raw) as 'sfdc_oppty_id_raw',
 		h.dim_org_id, h.aws_account_number as aws_acc_no,
 		h.org_type as customer_type,
@@ -49,8 +49,8 @@ SELECT tv.id as _id,
 		o.account_name, o.account_industry as opportunity_industry,
 		o.fiscalqtr_oppty, o.stagename as 'opportunity_stage', cal.year2qtrname as fsical_quarter
 		FROM history.vmc_set_tech_validation tv
-		JOIN mel h ON (tv.org_id = h.dim_org_id)
-		JOIN oppty o ON (tv.sfdc_oppty_id_raw = o.id)
+		RIGHT JOIN mel h ON (tv.org_id = h.dim_org_id)
+		RIGHT JOIN oppty o ON (tv.sfdc_oppty_id_raw = o.id)
 		 LEFT JOIN vmc_dw.dim_date cal
     		ON (h.start_date=dim_date_id )
 
