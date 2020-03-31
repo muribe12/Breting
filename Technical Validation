@@ -3,6 +3,7 @@ WITH mel AS
 			SELECT s.dim_org_id,
 				o.aws_account_number,
 				o.org_type,
+				o.org_display_name,
 				p.cloud_provider,
 				p.cloud_provider_region,
 				sum(s.host_count) as hours, 
@@ -17,7 +18,7 @@ WITH mel AS
 				JOIN vmc_dw.dim_org o ON (s.dim_org_id = o.dim_org_id )
 				JOIN vmc_dw.dim_sddc_h p ON (s.dim_org_id = p.dim_org_id)
 			--WHERE s.dim_org_id LIKE '907d8650-4189-4a22-b42f-f8de7e4ca556'
-			GROUP BY s.dim_org_id,o.aws_account_number,o.org_type,p.cloud_provider, p.cloud_provider_region 
+			GROUP BY s.dim_org_id,o.aws_account_number,o.org_type,o.org_display_name, p.cloud_provider, p.cloud_provider_region 
 ),
 
 Oppty AS 
@@ -31,9 +32,9 @@ Oppty AS
 )
 
 SELECT tv.id as _id,
-		tv.customer_name, tv.org_id,
+		tv.customer_name, h.org_display_name, tv.org_id,
 		tv.se_specialist, tv.services, tv.status, 
-		tv.compliance, tv.region, 
+		tv.compliance, tv.region, tv.cs_manager,
 		CASE WHEN locate('|',tv.compliance) > 1 THEN left(tv.compliance, locate('|',tv.compliance)-1) ELSE tv.compliance END as primary_compliance,
 		CASE WHEN locate('|',tv.use_case) > 1 THEN left(tv.use_case, locate('|',tv.use_case)-1) ELSE tv.use_case END as primary_use_case, 
 		CASE WHEN locate('|',tv.region) > 1 THEN left(tv.region, locate('|',tv.region)-1) ELSE tv.region END as primary_aws_region,
@@ -52,6 +53,4 @@ SELECT tv.id as _id,
 		JOIN oppty o ON (tv.sfdc_oppty_id_raw = o.id)
 		 LEFT JOIN vmc_dw.dim_date cal
     		ON (h.start_date=dim_date_id )
-		--WHERE h.org_id LIKE '907d8650-4189-4a22-b42f-f8de7e4ca556'		
---ORDER BY h.end_date DESC
 
