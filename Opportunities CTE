@@ -7,7 +7,7 @@ WITH Oppty AS
                       opportunity_id__c, 
                       stagename, 
                       account_industry,
-                      MAX(systemmodstamp) as 'latest',
+                      MAX(systemmodstamp) as Oppty_Date,
                       ROW_NUMBER () OVER (PARTITION BY id ORDER BY systemmodstamp DESC) AS rnk
                       
                       FROM history.vmc_vmstar_opportunity
@@ -15,9 +15,9 @@ WITH Oppty AS
                       GROUP BY id,
                       opportunity_id__c, 
                       stagename, 
-                      account_industry,
+                      account_industry
                       
-                      ORDER BY MAX(systemmodstamp) DESC
+                      ORDER BY systemmodstamp DESC
                       )
                       WHERE rnk = 1
                       )
