@@ -1,0 +1,23 @@
+WITH Oppty AS
+        (
+        
+        Select * FROM 
+                      (SELECT
+                      id,
+                      opportunity_id__c, 
+                      stagename, 
+                      account_industry,
+                      MAX(systemmodstamp) as 'latest',
+                      ROW_NUMBER () OVER (PARTITION BY id ORDER BY systemmodstamp DESC) AS rnk
+                      
+                      FROM history.vmc_vmstar_opportunity
+                      
+                      GROUP BY id,
+                      opportunity_id__c, 
+                      stagename, 
+                      account_industry,
+                      
+                      ORDER BY MAX(systemmodstamp) DESC
+                      )
+                      WHERE rnk = 1
+                      )
