@@ -1,0 +1,35 @@
+WITH Tech_Prod AS 
+        (
+        
+        Select mel3.* FROM 
+                      (
+                      SELECT
+                          tv.id,
+                          ROW_NUMBER () OVER (PARTITION BY tv.id 
+                          ORDER BY MAX(tv.pa__processed_ts) DESC) AS "rnk",
+                          MAX(tv.pa__processed_ts) AS tech_prod_last_update,
+                          tv.org_id,
+                          tv.customer_name,
+    		                  tv.se_specialist, tv.services, tv.status, 
+    		                  tv.compliance, tv.region, tv.cs_manager,
+    		                  CASE WHEN locate('|',tv.compliance) > 1 THEN left(tv.compliance, locate('|',tv.compliance)-1) ELSE tv.compliance END as primary_compliance,
+    		                  CASE WHEN locate('|',tv.use_case) > 1 THEN left(tv.use_case, locate('|',tv.use_case)-1) ELSE tv.use_case END as primary_use_case, 
+    		                  CASE WHEN locate('|',tv.region) > 1 THEN left(tv.region, locate('|',tv.region)-1) ELSE tv.region END as primary_aws_region,
+                          CASE WHEN locate('|',tv.use_case) > 0 THEN split_part(tv.use_case,'|',2) END as secondary_use_case,
+                          CASE WHEN locate('|',tv.region) > 0 THEN split_part(tv.region,'|',2) END as secondary_aws_region,
+            	            CASE WHEN locate('|',tv.se_specialist) > 1 THEN LEFT(tv.se_specialist, locate('|',tv.se_specialist)-1) ELSE tv.se_specialist END as se_technical_specialist
+                          
+                    FROM history.vmc_set_tech_validation tv
+                      
+                      GROUP BY tv.org_id,
+                      tv.id, 
+                      tv.customer_name, 
+                      tv.se_specialist, tv.services, tv.status, 
+		                  tv.compliance, tv.region, tv.cs_manager,
+		                  tv.use_case
+                      
+                      --ORDER BY tech_prod_last_update DESC
+                      
+                      ) as mel3
+                      WHERE mel3.rnk=1
+                  )
