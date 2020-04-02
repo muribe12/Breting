@@ -1,23 +1,26 @@
-WITH Oppty AS
+WITH Oppty AS 
         (
         
-        Select * FROM 
-                      (SELECT
-                      id,
-                      opportunity_id__c, 
-                      stagename, 
-                      account_industry,
-                      MAX(systemmodstamp) as Oppty_Date,
-                      ROW_NUMBER () OVER (PARTITION BY id ORDER BY systemmodstamp DESC) AS rnk
+        Select mel.* FROM 
+                      (
+                      SELECT
+                      a.id,
+                      ROW_NUMBER () OVER (PARTITION BY a.id 
+                      ORDER BY MAX(a.systemmodstamp) DESC) AS "rnk",
+                      MAX(a.systemmodstamp) AS Oppty_Date,
+                      a.opportunity_id__c,
+                      a.stagename, 
+                      a.account_industry
                       
-                      FROM history.vmc_vmstar_opportunity
+                      FROM history.vmc_vmstar_opportunity a
                       
-                      GROUP BY id,
-                      opportunity_id__c, 
-                      stagename, 
-                      account_industry
+                      GROUP BY a.id,
+                      a.opportunity_id__c, 
+                      a.stagename, 
+                      a.account_industry
                       
-                      ORDER BY systemmodstamp DESC
-                      )
-                      WHERE rnk = 1
-                      )
+                      ORDER BY Oppty_Date DESC
+                      
+                      ) as mel
+                      WHERE mel.rnk=1
+                  )
