@@ -8,11 +8,12 @@ search <- outlook_app$AdvancedSearch(
 
 results <- search$Results()
 results$Item(1)$ReceivedTime() # Received time of first search result
+Sys.sleep(10)
 as.Date("1899-12-30") + floor(results$Item(1)$ReceivedTime()) # Received date
 
 for (i in 1:results$Count()) {
   if (as.Date("1899-12-30") + floor(results$Item(i)$ReceivedTime()) 
-      == as.Date("2020-04-12")) {
+      == as.Date("2020-04-13")) {
     email <- results$Item(i)
   }
 }
