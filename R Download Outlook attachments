@@ -20,3 +20,26 @@ for (i in 1:results$Count()) {
 
 attachment_file <- "C:/Users/muribe/VMware, Inc/SaaS Advanced Analytics - EDA - Documents/General/Sources/SDP PF Report.csv"
 email$Attachments(1)$SaveAsFile(attachment_file)
+
+library(RDCOMClient)
+outlook_app <- COMCreate("Outlook.Application")
+search <- outlook_app$AdvancedSearch(
+  "Inbox",
+  "urn:schemas:httpmail:subject LIKE 'SAP PF Report%'"
+)
+
+
+results <- search$Results()
+results$Item(1)$ReceivedTime() # Received time of first search result
+Sys.sleep(10)
+as.Date("1899-12-30") + floor(results$Item(1)$ReceivedTime()) # Received date
+
+for (i in 1:results$Count()) {
+  if (as.Date("1899-12-30") + floor(results$Item(i)$ReceivedTime()) 
+      == as.Date("2020-04-13")) {
+    email <- results$Item(i)
+  }
+}
+
+attachment_file <- "C:/Users/muribe/VMware, Inc/SaaS Advanced Analytics - EDA - Documents/General/Sources/SAP PF Report.xlsx"
+email$Attachments(1)$SaveAsFile(attachment_file)
