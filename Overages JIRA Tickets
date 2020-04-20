@@ -1,0 +1,60 @@
+With Amount AS (
+                SELECT * FROM starshot_lake.jira_csp_customfieldvalue j 
+                WHERE customfield = '14300'
+                AND j.pa__collection_id = (SELECT MAX(pa__collection_id) AS Last_Update 
+                                          FROM starshot_lake.jira_csp_customfieldvalue)
+),
+
+org_name AS ( SELECT
+                    org.org_id,
+                    org.org_display_name,
+                    org.company_name
+              FROM
+                 (
+                  SELECT 
+                  id,
+                  issue,
+                  j.textvalue,
+                  regexp_extract(j.textvalue, '([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-Z0-9]{4}-[a-fA-Z0-9]{12})', 0) AS org_id_extract
+                  
+                  FROM starshot_lake.jira_csp_customfieldvalue j 
+                  
+                  WHERE 1=1 
+                    AND j.customfield = '12000'
+                    AND j.pa__collection_id = (SELECT MAX(pa__collection_id) 
+                                                FROM starshot_lake.jira_csp_customfieldvalue)
+                  ) cfv
+                  
+              LEFT JOIN (SELECT * FROM vmc_dw.dim_org
+                          WHERE ss__processed_ts = (
+                                                    SELECT MAX(ss__processed_ts) FROM vmc_dw.dim_org)
+                        AND org_id ILIKE '50606311-b6bb-4c3f-bc22-05514%') org
+                        ON (cfv.org_id_extract = org.org_id)
+              WHERE 1=1
+                            
+),
+
+CTE AS (SELECT MAX(pa__collection_id) AS Last_Update 
+            FROM starshot_lake.jira_csp_jiraissue 
+            )
+            
+SELECT *, CASE WHEN j.issuestatus = '11415' THEN 'Internal Review'
+          WHEN j.issuestatus = '11417' THEN 'Customer Confirmation Needed'
+          WHEN j.issuestatus = '11700' THEN 'Done'
+          WHEN j.issuestatus = '11418' THEN 'Invoiced'
+          ELSE '' END AS issue_status,
+          --'https://servicedesk.eng.vmware.com/browse/CSSD-' || j.issuenum AS issue_url,
+          a.numbervalue as amount,
+          o.org_id_extract as org_id
+          
+  FROM starshot_lake.jira_csp_jiraissue j
+  
+  INNER JOIN CTE ON (j.pa__collection_id=CTE.Last_Update)
+  LEFT JOIN Amount a ON (j.issuenum=a.issue)
+  LEFT JOIN org_name o ON (o.issue=j.issuenum)
+  
+  WHERE ISSUETYPE = '11509'
+  AND issuestatus IN ('11415','11417','11700', '11418','11700')
+  --AND  issuenum= '91003'
+  ORDER BY issuenum ASC
+  Limit 10000
