@@ -1,64 +1,97 @@
 With Amount AS (
-                SELECT * FROM starshot_lake.jira_csp_customfieldvalue j 
-                WHERE customfield = '14300'
-                AND j.pa__collection_id = (SELECT MAX(pa__collection_id) AS Last_Update 
+                SELECT * FROM starshot_lake.jira_csp_customfieldvalue j
+                  INNER JOIN (SELECT issuenum FROM starshot_lake.jira_csp_jiraissue WHERE issuetype = '11509'
+                  AND pa__collection_id= (Select MAX(pa__collection_id) FROM starshot_lake.jira_csp_jiraissue) )k
+                ON (j.issue=k.issuenum)
+                
+                WHERE numbervalue IS NOT NULL
+                --WHERE customfield = '14300'
+                --WHERE issue ILIKE '10549%'
+                AND j.pa__collection_id = (SELECT MAX(pa__collection_id) 
                                           FROM starshot_lake.jira_csp_customfieldvalue)
+
+                ORDER BY issue ASC
 ),
 
 org_name AS ( SELECT
-                    org.org_id,
-                    org.org_display_name,
-                    org.company_name
+                    cfv.issuenum,
+                    org.ea_number,
+                    org.ea_name AS 'customer_name'
               FROM
                  (
                   SELECT 
-                  id,
-                  issue,
-                  textvalue,
-                  regexp_extract(textvalue, '([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-Z0-9]{4}-[a-fA-Z0-9]{12})', 0) AS org_id_extract
+                  j.issuenum,
+                  j.issuetype,
+                  j.issuestatus,
+                  RIGHT(REGEXP_EXTRACT(j.description,'([A-F]{2}#: [0-9]{9})',0),9) AS ea_number_extract1,
+                  CASE WHEN LOCATE('EA#',j.description) > 0 THEN LEFT(split_part(j.description,'EA#',2),13) END ea_number_extract2
+                ---LEFT(ea_number_extract2,12) AS ea_number_extract3 
                   
-                  FROM starshot_lake.jira_csp_customfieldvalue 
+                  FROM starshot_lake.jira_csp_jiraissue j 
                   
-                  WHERE 1=1 
-                  AND issue ILIKE '89146'
-                  --org_id_extract LIKE 'af79901b-81d2-4655%'
-                    AND customfield = '12000'
-                    AND pa__collection_id = (SELECT MAX(pa__collection_id) 
-                                                FROM starshot_lake.jira_csp_customfieldvalue)
+                  WHERE 1=1
+                  AND j.issuetype = '11509'
+                  AND pa__collection_id = (SELECT MAX(pa__collection_id) 
+                                                FROM starshot_lake.jira_csp_jiraissue)
+                 limit 200
                   ) cfv
                   
-              LEFT JOIN (SELECT * FROM vmc_dw.dim_org
-                          WHERE ss__processed_ts = (
-                                                    SELECT MAX(ss__processed_ts) FROM vmc_dw.dim_org)
-                        --AND org_id ILIKE '50606311-b6bb-4c3f-bc22-05514%'
+              LEFT JOIN (SELECT mel.ea_number,mel.ea_name FROM
+                                (
+                                SELECT ea_number,
+                                ROW_NUMBER() OVER (PARTITION BY ea_number ORDER BY MAX(last_update_date) DESC) as rnk,
+                                ea_name,
+                                MAX(last_update_date) AS 'latest'
+                                
+                                FROM starshot_lake_restricted.xxvm_epp_fund_details_v
+                                WHERE pa__collection_id = (
+                                                    SELECT MAX(pa__collection_id) FROM starshot_lake_restricted.xxvm_sdp_account
+                                                    )
+                                                    
+                                GROUP BY ea_number, ea_name ) as mel
+                          WHERE mel.rnk = 1
                         ) org
-                        ON (cfv.org_id_extract = org.org_id)
+                        ON (cfv.ea_number_extract = org.ea_number)
               WHERE 1=1
-              --AND org_id ILIKE 'af79901b-81d2-4655%'
-                            
+
 ),
 
 CTE AS (SELECT MAX(pa__collection_id) AS Last_Update 
             FROM starshot_lake.jira_csp_jiraissue 
             )
             
-SELECT *, CASE WHEN j.issuestatus = '11415' THEN 'Internal Review'
+SELECT 
+        j.issuenum,
+        j.assignee,
+        j.created,
+        j.creator,
+        j.resolutiondate,
+        j.description,
+        j.issuestatus,
+        j.issuetype,
+        j.pa__processed_ts as 'latest_update',
+        j.reporter
+        
+        ,CASE WHEN j.issuestatus = '11415' THEN 'Internal Review'
           WHEN j.issuestatus = '11417' THEN 'Customer Confirmation Needed'
           WHEN j.issuestatus = '11700' THEN 'Done'
           WHEN j.issuestatus = '11418' THEN 'Invoiced'
           ELSE '' END AS issue_status,
-          --'https://servicedesk.eng.vmware.com/browse/CSSD-' || j.issuenum AS issue_url,
+          CONCAT('https://servicedesk.eng.vmware.com/browse/CSSD-', j.issuenum) AS issue_url,
           a.numbervalue as amount,
-          o.org_id_extract as org_id
+          o.ea_number,
+          o.customer_name,
+          
           
   FROM starshot_lake.jira_csp_jiraissue j
   
   INNER JOIN CTE ON (j.pa__collection_id=CTE.Last_Update)
   LEFT JOIN Amount a ON (j.issuenum=a.issue)
-  LEFT JOIN org_name o ON (o.issue=j.issuenum)
+  LEFT JOIN org_name o ON (o.issuenum=j.issuenum)
   
   WHERE ISSUETYPE = '11509'
   AND issuestatus IN ('11415','11417','11700', '11418','11700')
   --AND  issuenum= '91003'
-  ORDER BY issuenum ASC
+  ORDER BY j.issuenum ASC
   Limit 10000
+  
