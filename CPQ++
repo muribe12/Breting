@@ -12,8 +12,8 @@ SELECT DISTINCT
   Table__47.FIS_MONTHSHORTNAME,
   Table__47.FIS_WEEKOFYEAR,
   Table__3.WORKFLOW_STATUS,
-  coalesce(coalesce(Table__3.PRICING_APPROVAL_DATE,Table__3.SPF_APPROVED_DATE
-),Table__3.APPROVED_DATE,0),
+  coalesce(coalesce(to_char(Table__3.PRICING_APPROVAL_DATE,'YYYY-MM-DD'),to_char(Table__3.SPF_APPROVED_DATE,'YYYY-MM-DD')
+),Table__3.APPROVED_DATE),
   Table__42.FIS_YEAR2QTRNAME,
   Table__42.FIS_MONTHSHORTNAME,
   --Table__3.SEC_GEO,
@@ -42,7 +42,7 @@ WHERE
    AND
    Table__3.WORKFLOW_STATUS  NOT IN  ( 'Inactive','Rejected','Returned'  )
   )
-GROUP by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23
+GROUP by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,23
   --Table__3.QUOTE_NUMBER, 
   --Case When Table__18.QUOTE_NUMBER=Table__3.QUOTE_NUMBER Then 'Y' Else 'N' End, 
   --Table__25.FIS_WEEKOFYEAR, 
