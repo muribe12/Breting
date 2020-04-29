@@ -1,0 +1,71 @@
+SELECT DISTINCT
+  Table__3.QUOTE_NUMBER,
+  Case When Table__18.QUOTE_NUMBER = Table__3.quote_number Then 'Y' Else 'N' End as Flag,
+  Table__25.FIS_WEEKOFYEAR,
+  Table__18.BOOKED_DATE,
+  Table__25.CAL_YEAR4,
+  Table__25.FIS_YEAR2QTRNAME,
+  Table__25.FIS_MONTHSHORTNAME,
+  Table__42.FIS_WEEKOFYEAR,
+  Table__3.created_DATE,
+  Table__47.FIS_YEAR2QTRNAME,
+  Table__47.FIS_MONTHSHORTNAME,
+  Table__47.FIS_WEEKOFYEAR,
+  Table__3.WORKFLOW_STATUS,
+  coalesce(coalesce(Table__3.PRICING_APPROVAL_DATE,Table__3.SPF_APPROVED_DATE
+),Table__3.APPROVED_DATE,0),
+  Table__42.FIS_YEAR2QTRNAME,
+  Table__42.FIS_MONTHSHORTNAME,
+  --Table__3.SEC_GEO,
+  --Table__3.SEC_REGION,
+  --Table__3.SEC_SUBREGION,
+  Table__3.SOURCE_SYSTEM,
+  Table__3.assigned_to,
+  Table__3.CREATED_DATE,
+  Table__8.FIS_YEAR2QTRNAME,
+  Table__8.FIS_MONTHSHORTNAME,
+  SUM(CAST(Table__3.TOTAL_DEAL_SIZE_USD AS INTEGER)),
+  Table__8.FIS_WEEKOFYEAR
+FROM
+  base.VDIM_CAL_DATE  Table__47 RIGHT OUTER JOIN base.VFCT_MDLN_QUOTE  Table__3 ON (Table__3.created_date =Table__47.CAL_DATE)
+   LEFT OUTER JOIN base.VXREF_MDLN_QUOTE_ORDER  Table__18 ON (Table__18.QUOTE_NUMBER=Table__3.QUOTE_NUMBER)
+   LEFT OUTER JOIN bASE.VDIM_CAL_DATE  Table__25 ON (Table__25.CAL_DATE=Table__18.BOOKED_DATE)
+   LEFT OUTER JOIN base.VDIM_CAL_DATE  Table__8 ON (Table__3.CREATED_DATE=Table__8.CAL_DATE)
+   LEFT OUTER JOIN base.VDIM_CAL_DATE  Table__42 ON (Table__3.PRICING_APPROVAL_DATE=Table__42.CAL_DATE) OR (Table__3.SPF_APPROVED_DATE=Table__42.CAL_DATE)
+OR (CAST(Table__3.APPROVED_DATE AS DATE) = Table__42.CAL_DATE)
+  
+WHERE
+  (
+   coalesce(Case when Table__3.QUOTE_TYPE ='ELA' then 'IB Quote' when Table__3.QUOTE_TYPE='SPF' then 'SPF' when Table__3.QUOTE_TYPE=4 then 'ELA' end,Table__3.QUOTE_TYPE)  IN  ( 'ELA'  )
+   AND
+   Table__3.CREATED_DATE  >=  '2020-03-29 00:00:00'
+   AND
+   Table__3.WORKFLOW_STATUS  NOT IN  ( 'Inactive','Rejected','Returned'  )
+  )
+GROUP by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23
+  --Table__3.QUOTE_NUMBER, 
+  --Case When Table__18.QUOTE_NUMBER=Table__3.QUOTE_NUMBER Then 'Y' Else 'N' End, 
+  --Table__25.FIS_WEEKOFYEAR, 
+  --Table__18.BOOKED_DATE, 
+  --Table__25.CAL_YEAR4, 
+  --Table__25.FIS_YEAR2QTRNAME, 
+  --Table__25.FIS_MONTHSHORTNAME, 
+  --Table__42.FIS_WEEKOFYEAR, 
+  --Table__3.SUBMITTED_DATE, 
+  --Table__47.FIS_YEAR2QTRNAME, 
+  --Table__47.FIS_MONTHSHORTNAME, 
+  --Table__47.FIS_WEEKOFYEAR, 
+  --Table__3.WORKFLOW_STATUS, 
+  --coalesce(coalesce((Table__3.PRICING_APPROVAL_DATE),(Table__3.SPF_APPROVED_DATE)
+--),(Table__3.APPROVED_DATE )), 
+  --Table__42.FIS_YEAR2QTRNAME, 
+  --Table__42.FIS_MONTHSHORTNAME, 
+  --Table__3.SEC_GEO, 
+  --Table__3.SEC_REGION, 
+  --Table__3.SEC_SUBREGION, 
+  ---Table__3.SOURCE_SYSTEM, 
+  --Table__3.assigned_to, 
+  --Table__3.CREATED_DATE, 
+  --Table__8.FIS_YEAR2QTRNAME, 
+  --Table__8.FIS_MONTHSHORTNAME, 
+  --Table__8.FIS_WEEKOFYEAR
