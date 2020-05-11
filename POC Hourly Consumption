@@ -1,0 +1,34 @@
+WITH POC_Customers AS (Select distinct dim_org_id from vmc_dw.dim_org where org_type IN('CUSTOMER_POC','PARTNER_POC')) 
+,sddc_host_count
+AS (
+SELECT s.dim_org_id,
+      src.vmc_sddc__fk AS dim_sddc_id,
+      DATE_ADD(TRUNC(src.pa__arrival_ts, 'DD'), INTERVAL date_part('hour', src.pa__arrival_ts) hours) AS date_time,
+      COUNT(1) AS cnt_hosts
+FROM starshot_lake.vmc_sddc_resource_config_clusters_esx_host_list src
+INNER JOIN vmc_dw.dim_sddc s ON s.dim_sddc_id = src.vmc_sddc__fk
+WHERE dim_org_id = 'b261cc8e-65d4-4c73-8169-0d88b97ec8d9'
+GROUP BY s.dim_org_id,
+src.vmc_sddc__fk,
+TRUNC(src.pa__arrival_ts, 'DD'),
+date_part('hour', src.pa__arrival_ts)
+),
+org_host_count_hourly
+AS (
+SELECT dim_org_id,
+      date_time,
+      sum(cnt_hosts) AS host_count
+FROM sddc_host_count
+GROUP BY dim_org_id,
+        date_time
+)
+SELECT host.dim_org_id,
+trunc(host.date_time, 'DD') as dim_date_id,
+AVG(host.host_count) as avg_host_count_daily,
+count(1) as Number_of_datapoints
+FROM org_host_count_hourly host
+INNER JOIN POC_Customers poc ON (poc.dim_org_id=host.dim_org_id)
+GROUP BY host.dim_org_id,
+trunc(host.date_time, 'DD')
+
+Limit 10000
