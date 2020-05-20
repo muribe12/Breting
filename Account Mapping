@@ -1,0 +1,20 @@
+Select distinct entacc.ea_number, 
+      o.org_id,
+      o.opportunity_id,
+      o.org_display_name, 
+      o.company_name,
+      entacc.account_name
+      --cust.csm_name,
+      --op.account_name, 
+      --op.account_owner_name
+      
+      
+      FROM starshot_lake_restricted.xxvm_sdp_account entacc 
+      LEFT JOIN vmc_dw.dim_org o on o.dim_sdp_ent_account_id = CAST(entacc.account_id as string)
+      --LEFT JOIN vmc_dw_restricted.dim_vmstar_opportunity op on o.opportunity_id = op.opportunity_id
+      --LEFT JOIN vmc_dw_stg.fact_gainsight_cust_rel cust on o.dim_org_id=cust.dim_org_id
+
+      WHERE entacc.pa__collection_id = (Select MAX(pa__collection_id) FROM starshot_lake_restricted.xxvm_sdp_account)
+      --AND o.ss__processed_ts = (Select MAX(ss__processed_ts) FROM vmc_dw.dim_org)
+      --AND op.ss__processed_ts = (Select MAX(ss__processed_ts) FROM vmc_dw_restricted.dim_vmstar_opportunity)
+      --AND cust.ss__processed_ts = (Select MAX(ss__processed_ts) FROM vmc_dw_stg.fact_gainsight_cust_rel)
