@@ -1,0 +1,580 @@
+SELECT t2.vmware_sid,
+       t2.pf_invoice_num,
+       t2.disti_geo,
+       t2.aging_days,
+       t2.aging_bucket,
+       CASE
+          WHEN t2.currency = 'AUD'
+          THEN
+             (t2.billing_amt * 0.7275000000187331)
+          WHEN t2.currency = 'JPY'
+          THEN
+             (t2.billing_amt * 0.0089385474860335)
+          WHEN t2.currency = 'GBP'
+          THEN
+             (t2.billing_amt * 1.227500000030381)
+          WHEN T2.currency = 'EUR'
+          THEN
+             (t2.billing_amt * 1.049999999979)
+   WHEN T2.currency = 'CNY'
+          THEN
+             (t2.billing_amt * 0.1417434443656981)
+          ELSE
+             t2.billing_amt * 1
+       END
+          billing_amount_usd,
+       CASE WHEN atleast_1 > 0 THEN 'BILLED' ELSE t2.billing_flag END
+          billing_flag,
+       t2.proforma_line_status,
+       --cancel_flag,
+         t2.inv_type,
+       t2.customer_po_number,
+       t2.disti_cust_name,
+       t2.start_date,
+       t2.end_date,
+       t2.end_cust_name,
+       t2.RESELLER_CUST_NAME,
+       t2.pf_month,
+       t2.pf_year,
+       t2.oracle_invoice_number,
+       t2.oracle_invoice_date,
+       t2.part_number,
+       t2.pf_inv_date,
+       t2.oracle_order_date,
+       t2.oracle_order_number,
+       t2.ar_ebs_table_id,
+       t2.currency,
+       t3.atleast_1 atleast_1_bill,          -- ,  bill_flag_value, head_invoice
+       t2.billing_amt,
+       --t2.oracle_ord_sts,
+       t2.cancel_flag
+  FROM (  SELECT cancel_flag,
+                 bill_flag_value,
+                 head_invoice head_order,
+                 head_invoice,
+                 ar_invoice_total,
+                 --head_line,
+                 vmware_sid,
+                 pf_invoice_num,
+                 disti_geo,
+                 aging_days,
+                 aging_bucket,
+                 billing_amt,
+                 CASE
+                    WHEN (    (   bill_flag_value >= 1
+                               OR oracle_invoice_number IS NOT NULL
+                               OR head_invoice IS NOT NULL)
+                          AND cancel_flaG = 'N'
+                          OR PF_INVOICE_NUM='PF_950034045' --Changes Billing Flag Field of PF_950034045 to Cancelled
+                          )
+                    THEN
+                       'BILLED'
+                    WHEN (cancel_flag = 'Y' 
+                    --OR oracle_ord_sts = 'CANCELLED' 
+                    OR PF_INVOICE_NUM='PF_950003091'
+                    OR PF_INVOICE_NUM='PF_950073550' )     --Changes Billing Flag of PF_950003091 and PF_950073550 Field to Cancelled
+                    THEN
+                       'Cancelled'
+                    ELSE
+                       'UNBILLED'
+                 END
+                    billing_flag,
+                 CASE
+                    WHEN (    proforma_line_status = 'UNBILLED'
+                          AND oracle_invoice_number IS NOT NULL)
+                    THEN
+                       'BILLED'
+                    ELSE
+                       proforma_line_status
+                 END
+                    proforma_line_status,
+                 inv_type,
+                 customer_po_number,
+                 disti_cust_name,
+                 start_date,
+                 end_date,
+                 end_cust_name,
+                 RESELLER_CUST_NAME,
+                 pf_month,
+                 pf_year,
+                 oracle_invoice_number,
+                 oracle_invoice_date,
+                 part_number,
+                 pf_inv_date,
+                 oracle_order_date,
+                 oracle_order_number,
+                 --oracle_ord_sts,
+                 ar_ebs_table_id,
+                 currency
+            FROM (SELECT vmware_sid,
+                         (SELECT MAX (d2.invoice_customer_trx_id) val
+                            FROM XXVMSDP.xxvm_sdp_fin_invoices a2,
+                                 XXVMSDP.xxvm_sdp_fin_invoice_lines d2,
+                                 XXVMSDP.xxvm_sdp_fin_pf_inv_dtls e2
+                           WHERE     1 = 1
+                                 AND a2.invoice_id = d2.invoice_id
+                                 AND e2.invoice_line_id = d2.invoice_line_id
+                                 --AND e2.pf_invoice_num = e.pf_invoice_num
+                                 )
+                            bill_flag_value,
+                         --(SELECT flow_status_code
+                           -- FROM apps.oe_order_headers_all
+                           --WHERE order_number = d.sales_order_number)
+                            --oracle_ord_sts,
+                         e.pf_invoice_num,
+                         DECODE (
+                            disti_cust_name,
+                            'AVT Technology Solutions LLC', 'AMER',
+                            'Avnet International Canada Ltd', 'AMER',
+                            'Ingram Micro - Canada', 'AMER',
+                            'Tech Data Canada Corporation', 'AMER',
+                            'Arrow ECS Canada Ltd', 'AMER',
+                            'Arrow Enterprise Computing Solutions, Inc.', 'AMER',
+                            'Avnet Technology Solutions - USA', 'AMER',
+                            'Carahsoft Technology Corp', 'AMER',
+                            'Ingram Micro Inc', 'AMER',
+                                                                                                         'Ingram Micro Inc.', 'AMER',                                                                     --Added on Oct  19th                                                                  
+                            'Tech Data Corp', 'AMER',
+                            'Alternative Technology, Inc.', 'AMER',
+                            'Ingram Micro Inc (Federal)', 'AMER',
+                            'Carahsoft', 'AMER',
+                            'CenturyLink Technology Solutions [BVP-D]', 'AMER',
+                            'Ingram Micro - Australia', 'APAC',
+                            'Avnet TS Australia Limited', 'APAC',
+                            'Thakral Cambodia Industries Ltd', 'APAC',
+                            'Digital China Technology Ltd', 'APAC',
+                            'Beijing Futong Jingwei Technology Co Ltd', 'APAC',
+                            'Ingram Micro Trading (Shanghai) Co., Ltd.', 'APAC',
+                            'Ingram Micro (China) Limited', 'APAC',
+                            'ECS Technology (HK) Co. Ltd.', 'APAC',
+                            'Synnex Technology International (HK) Ltd.', 'APAC',
+                            'Avnet Technology Solutions (India) Private Limited', 'APAC',
+                            'Ingram Micro India Limited', 'APAC',
+                            'REDINGTON (INDIA) LIMITED', 'APAC',
+                            'PT Avnet Datamation Solutions', 'APAC',
+                            'PT Virtus Technology Indonesia', 'APAC',
+                            'Networld Corp.', 'APAC',
+                            'Daiwabo Information System Co. Ltd', 'APAC',
+                            'SoftBank Commerce &' || ' Service Corp', 'APAC',
+                            'SoftBank Commerce &' || ' Service Corp [BVP-D]', 'APAC',
+                            'Daou Technology, Inc', 'APAC',
+                            'Youngwoo Digital Co Ltd', 'APAC',
+                            'ECS Pericomp Sdn Bhd', 'APAC',
+                            'Ingram Micro Malaysia Sdn Bhd', 'APAC',
+                            'Ingram Micro NZ Ltd', 'APAC',
+                            'Westcon Group NZ Ltd', 'APAC',
+                            'EZY Infotech Pvt. Ltd', 'APAC',
+                            'MSI-ECS Phils Inc', 'APAC',
+                            'Technopaq Incorporated', 'APAC',
+                            'Avnet Asia Pte Ltd', 'APAC',
+                            'ECS Computer Asia PTE LTD', 'APAC',
+                            'Ingram Micro Asia Ltd', 'APAC',
+                            'Ingram Micro India Ltd Singapore Branch', 'APAC',
+                            'Redington (India) Limited Singapore Branch', 'APAC',
+                            'EZY INFOTECH PTE. LTD', 'APAC',
+                            'Redington Distribution Pte Ltd', 'APAC',
+                            'Redington SL Private Limited', 'APAC',
+                            'Bestcom Infotech Corp Co Ltd', 'APAC',
+                            'ZeroOne', 'APAC',
+                            'Sysage Technology Co., Ltd.', 'APAC',
+                            'SIS Distribution Thailand', 'APAC',
+                            'The Value Systems Co Ltd', 'APAC',
+                            'Viettel Import-Export Co. Ltd', 'APAC',
+                            'Telstra [BVP-DR]', 'APAC',
+                            'Avnet Technology Solutions Argentina S.A.', 'CALA',
+                            'LicenciasOnline S.A. (AR)', 'CALA',
+                            'Equanet', 'CALA',
+                            'LOL Servicios Informáticos S.A.', 'CALA',
+                            'Equanet SRL', 'CALA',
+                            'Acao Informatica Brasil Ltda.', 'CALA',
+                            'Officer Brazil', 'CALA',
+                            'DCL Brasil Distribuidora Ltda', 'CALA',
+                            'Westcon Brasil Ltda', 'CALA',
+                            'Afina Chile', 'CALA',
+                            'Adistec Chile S.P.A.', 'CALA',
+                            'Licencias On Line S.A. (CL)', 'CALA',
+                            'Adistec Colombia S.A.S', 'CALA',
+                            'Afinasis Ltda', 'CALA',
+                            'Adistec Costa Rica, S.A', 'CALA',
+                            'Adistectech S.A.', 'CALA',
+                            'Licencias On Line LOLCOM S.A.', 'CALA',
+                            'Afinasis S.A. de C.V. Mexico', 'CALA',
+                            'Avnet Partner Solutions S de RL de CV', 'CALA',
+                            'Compusoluciones Y Asociados SA de CV', 'CALA',
+                            'Ingram Micro Mexico, S.A. de C.V.', 'CALA',
+                            'Adistec Panama, S.A', 'CALA',
+                            'Licenciasonline S.A.', 'CALA',
+                            'Adistec Peru S.A.C.', 'CALA',
+                            'Licencias On Line S.A.C (PE)', 'CALA',
+                            'Micro Computer Caribbean Ltd', 'CALA',
+                            'Licencias On Line S.A.', 'CALA',
+                            'Adistec', 'CALA',
+                            'Westcon CALA, Inc', 'CALA',
+                            'Prosatcomm Venezuela, S.A.', 'CALA',
+                            'Arrow ECS Internet Security AG', 'EMEA',
+                            'Softprom Distribution Gmbh', 'EMEA',
+                            'Merlion Trade GmbH', 'EMEA',
+                            'Altimate Belgium s.p.r.l', 'EMEA',
+                            'Avnet Europe Comm VA', 'EMEA',
+                            'NDB Ltd.', 'EMEA',
+                            'Recro d.d.', 'EMEA',
+                            'M SAN Grupa d.d.', 'EMEA',
+                            'Arrow ECS, a.s.', 'EMEA',
+                            'Arrow ECS Denmark A/S', 'EMEA',
+                            'Tech Data Denmark ApS', 'EMEA',
+                            'Aptec Egypt LLC', 'EMEA',
+                            'Tech Data Finland Oy', 'EMEA',
+                            'Arrow ECS Finland Oy', 'EMEA',
+                            'Arrow ECS SAS', 'EMEA',
+                            'Tech Data France', 'EMEA',
+                            'LLC Muk-Tbilisi', 'EMEA',
+                            'Ingram Micro Distribution GmbH', 'EMEA',
+                            'Tech Data GmbH &' || ' Co. OHG', 'EMEA',
+                            'Arrow ECS AG', 'EMEA',
+                            'Enet Solutions Logicom S.A.', 'EMEA',
+                            'Westcon Group European Operations Ltd', 'EMEA',
+                            'Arrow ECS Kft', 'EMEA',
+                            'Arrow Enterprise Computing Solutions Ltd', 'EMEA',
+                            'Computer C-Data LTD', 'EMEA',
+                            'Esprinet', 'EMEA',
+                            'Comparex Italia S.R.L', 'EMEA',
+                            'Computer Gross Italia spa', 'EMEA',
+                            'Aptec Lebanon S.A.L', 'EMEA',
+                            'International Distributors Interdist Offshore SAL', 'EMEA',
+                            'Also Lietuva UAB', 'EMEA',
+                            'Tech Data Norge AS', 'EMEA',
+                            'Arrow ECS Norway AS', 'EMEA',
+                            'Arrow ECS Sp. z o.o.', 'EMEA',
+                            'Omnilogic SRL', 'EMEA',
+                            'Mont LLC', 'EMEA',
+                            'Aptec Saudi Arabia LLC', 'EMEA',
+                            'RRC d.o.o.', 'EMEA',
+                            'Asbis SK spol. s r.o.', 'EMEA',
+                            'DISS d.o.o.', 'EMEA',
+                            'Epsidon Technology Distribution (PTY) Limited', 'EMEA',
+                            'Axiz (Pty) Ltd', 'EMEA',
+                            'Westcon Comztek (Pty) Ltd', 'EMEA',
+                            'ARROW ENTERPRISE COMPUTING SOLUTIONS SA', 'EMEA',
+                            'Arrowecs Portugal - Sociedade Unipessoal Lda', 'EMEA', --Added on Nov 19th
+                            'TD Tech Data AB', 'EMEA',
+                            'Arrow ECS Sweden AB', 'EMEA',
+                            'Also Schweiz AG', 'EMEA',
+                            'Tech Data Schweiz Gmbh', 'EMEA',
+                            'Isolin Trade &' || ' Invest Limited', 'EMEA',
+                            'Tech Data NL', 'EMEA',
+                            'Avnet Technology Solutions Sanayi ve Ticaret AS', 'EMEA',
+                            'Armada Bilgisayar Sistemleri San Ve. TIC AS', 'EMEA',
+                            'Redington Gulf FZE', 'EMEA',
+                            'Arrow Enterprise Computing', 'EMEA',
+                            'Westcon Africa UK Ltd', 'EMEA',
+                            'Tech Data Limited', 'EMEA',
+                            'Informatsiyne Merezhyvo Ltd.', 'EMEA',
+                            'IT Distribution LLC', 'EMEA',
+                            'APTEC DISTRIBUTION FZ-LLC', 'EMEA',
+                            'Abris Distribution Inc', 'EMEA',
+                            'EMC Corporation', 'Global',
+                            'Tech Data Bvba/sprl', 'EMEA',                        
+                            'Tech Data Bvba/Sprl', 'EMEA',                       --Added on Sept 11th 
+                            'Arrow ECS N.V/S.A', 'EMEA',                         --Added on Sept 11th 
+                            'Dell Marketing LP', 'Global',                       --Added on Sept 11th 
+                            'Ingram Micro d.o.o. Beograd','EMEA',                --Added on Sept 11th
+                            'TD Tech Data Portugal, Lda','EMEA',                 --Added on Sept 11th
+                            'Tech Data Distribution Limited','EMEA',             --Added on Sept 11th
+                            'TS Europe BVBA','EMEA',                             --Added on Sept 11th
+                                                                                                         'Ingram Micro India Private Limited','APAC',                --Added on Oct  19th
+                                                                                                         'Arrow ECS Brasil','CALA',                                                                                                        --Added on Oct  19th
+                                                                                                         'INGRAM MICRO ASIA LTD','APAC',                                                                             --Added on Oct  19th
+                                                                                                         'Tech Data Advanced Solutions (ANZ) Limited','APAC', --Added on Oct  19th
+                                                                                                         'Test Fujiyama Disti [BVP-D]','APAC',                                                  --Added on Oct  19th
+                                                                                                         'VST ECS Thailand Co. Ltd','APAC',                                                                           --Added on Oct  19th
+                                                                                                         'Westcon Group Colombia LTDA','CALA',                                                   --Added on Oct  19th
+                            'Dell Federal Systems L.P.','AMER',                   --Added on Nov  19th
+                            'Ingram Micro India Pvt Ltd Singapore Branch','APAC', --Added on Nov  19th
+                            'Ingram Micro Malaysia Sdn. Bhd.','APAC',             --Added on Nov  19th
+                            'Merlion Trade Worldwide LTD','EMEA',                 --Added on Nov  19th
+                            'PT Tech Data Advanced Solutions Indonesia','APAC',   --Added on Nov  19th
+                            'Scansource Brasil Distribuidora de Tec. LTDA','CALA', --Added on Nov  19th
+                            'Tech Data Advanced Solutions (India) Private Ltd','APAC', --Added on Nov  19th
+                            'Tech Data Argentina S.A.','CALA',                     --Added on Nov  19th
+                            'Tech Data Espana S.L.U','EMEA',                     --Added on Nov  19th
+                            'VSTECS (SINGAPORE) PTE. LTD','APAC',          --Added on Dec  3rd
+                            'Westcon Mexico S.A. de C.V.','CALA',                --Added on Nov  19th
+                             'Not Applicable')
+                            disti_geo,
+                         ROUND (SYSDATE - e.pf_inv_date) aging_days, --aging_days    1099 (If “Unbilled” this should be today minus when proforma sent)
+                         CASE
+                            WHEN ROUND (SYSDATE - e.pf_inv_date) <= 30
+                            THEN
+                               '0-30'
+                            WHEN     ROUND (SYSDATE - e.pf_inv_date) > 30
+                                 AND ROUND (SYSDATE - e.pf_inv_date) < 61
+                            THEN
+                               '31-60'
+                            WHEN     ROUND (SYSDATE - e.pf_inv_date) > 60
+                                 AND ROUND (SYSDATE - e.pf_inv_date) < 91
+                            THEN
+                               '61-90'
+                            WHEN ROUND (SYSDATE - e.pf_inv_date) > 90
+                            THEN
+                               '90+'
+                         END
+                            aging_bucket,
+                         (extended_disti_cost) billing_amt,
+                         --DECODE (d.SALES_ORDER_NUMBER, NULL, 'UNBILLED', 'BILLED') Proforma_line_status,
+                         CASE
+                            WHEN (   (    d.sales_order_number IS NULL
+                                      AND e.cancel_flag != 'Y'
+                                      AND d.oracle_invoice_number IS NOT NULL
+                                      AND d.oracle_invoice_number != ' ')
+                                  OR     a.oracle_invoice_number IS NOT NULL
+                                    AND d.oracle_invoice_number != 'Y'
+                                     AND e.cancel_flag != 'Y'
+                                  OR 
+                                     e.PF_INVOICE_NUM='PF_950034045' --Changes Proforma_Line_Status Field of PF_950034045 to Billed
+                                     )
+                            THEN
+                               'BILLED'
+                            WHEN (    d.sales_order_number IS NULL
+                                  AND e.cancel_flag != 'Y'
+                                  AND d.oracle_invoice_number IS NULL
+                                  AND e.PF_INVOICE_NUM!='PF_950003091'   --Forces proforma_line_status NOT TO BE 'UNBILLED' for PF_950003091
+                                  AND e.PF_INVOICE_NUM!='PF_950073550'   --Forces proforma_line_status NOT TO BE 'UNBILLED' for PF_950073550
+                                  )
+                            THEN
+                               'UNBILLED'
+                            WHEN (    d.sales_order_number IS NOT NULL
+                                  AND d.oracle_invoice_number IS NOT NULL
+                                  AND (e.cancel_flag != 'Y'
+                                  OR e.PF_INVOICE_NUM='PF_950034045') --Forces proforma_line_status as BILLED for PF_950034045
+                                  )
+                            THEN
+                               'BILLED'
+                            WHEN (e.cancel_flag = 'Y' 
+                            OR e.PF_INVOICE_NUM='PF_950003091'       --Forces PF_950003091 proforma_line_status to be 'Cancelled'
+                            OR e.PF_INVOICE_NUM='PF_950073550')      --Forces PF_950073550 proforma_line_status to be 'Cancelled'
+                         
+                            THEN
+                               'Cancelled'
+                            ELSE
+                               'UNBILLED'
+                         END
+                            proforma_line_status,
+                         e.cancel_flag cncf,
+                         e.inv_type,
+                         d.customer_po_number,                  --  3501209074
+                         disti_cust_name, -- Distributor Name    Tech Data Corp
+                         e.start_date,
+                         e.end_date,
+                         end_cust_name, -- End Customer Name    Kelser Corp., dba. New Technology Systems
+                         e.RESELLER_CUST_NAME,
+                         -- TO_CHAR (e.pf_inv_date, 'Month') pf_month,
+                         -- EXTRACT (YEAR FROM e.pf_inv_date) pf_year,
+                         TO_CHAR (e.creation_date, 'Month') pf_month,
+                         EXTRACT (YEAR FROM e.creation_date) pf_year,
+                         --  d.oracle_invoice_number, --  950000065 (proforma number minus “PF”… can use this validate if there is an invoice
+                         DECODE (d.oracle_invoice_number,
+                                 NULL, a.oracle_invoice_number,
+                                 d.oracle_invoice_number)
+                            oracle_invoice_number,
+                         --  d.oracle_invoice_date,
+                         DECODE (d.oracle_invoice_date,
+                                 NULL, a.oracle_invoice_date,
+                                 d.oracle_invoice_date)
+                            oracle_invoice_date,
+                         part_number,                --    HSV-A1ACR-03MT0-C1S
+                         --e.pf_inv_date,      -- proforma_date    7/4/2013 8:01
+                         e.creation_date pf_inv_date,
+                         d.sales_order_date oracle_order_date, --    8/14/2013
+                         d.sales_order_number oracle_order_number, --   11643738 (as “billing order” in extract)
+                         d.invoice_customer_trx_id ar_ebs_table_id,
+                         e.currency,
+                         e.cancel_flag cancel_flag,
+                         a.sales_order_number head_order,
+                         a.oracle_invoice_number head_invoice,
+                         a.ar_invoice_total
+                    FROM XXVMSDP.XXVM_SDP_FIN_INVOICES a,
+                         XXVMSDP.XXVM_SDP_FIN_INVOICE_LINES d,
+                         XXVMSDP.XXVM_SDP_FIN_PF_INV_DTLS e
+                   WHERE     1 = 1
+                         AND e.invoice_line_id = d.invoice_line_id
+                         AND a.invoice_id = d.invoice_id) t1
+           WHERE 1 = 1 -- and pf_invoice_num ='PF_950005375'
+        ORDER BY pf_invoice_num) t2,
+       (  SELECT pf_invoice_num, COUNT (proforma_line_status) ATLEAST_1
+            FROM (  SELECT cancel_flag,
+                           bill_flag_value,
+                           head_invoice head_order,
+                           head_invoice,
+                           ar_invoice_total,
+                           --head_line,
+                           vmware_sid,
+                           pf_invoice_num,
+                           aging_days,
+                           aging_bucket,
+                           billing_amt,
+                           CASE
+                              WHEN (    (   bill_flag_value >= 1
+                                         OR oracle_invoice_number IS NOT NULL
+                                         OR head_invoice IS NOT NULL)
+                                    AND cancel_flaG = 'N')
+                              THEN
+                                 'BILLED'
+                              WHEN (   cancel_flag = 'Y'
+                                    --OR oracle_ord_sts = 'CANCELLED'
+                                    )
+                              THEN
+                                 'Cancelled'
+                              ELSE
+                                 'UNBILLED'
+                           END
+                              billing_flag,
+                           CASE
+                              WHEN (    proforma_line_status = 'UNBILLED'
+                                    AND oracle_invoice_number IS NOT NULL)
+                              THEN
+                                 'BILLED'
+                              ELSE
+                                 proforma_line_status
+                           END
+                              proforma_line_status,
+                           inv_type,
+                           customer_po_number,
+                           RESELLER_CUST_NAME,
+                           disti_cust_name,
+                           start_date,
+                           end_date,
+                           end_cust_name,
+                           pf_month,
+                           pf_year,
+                           oracle_invoice_number,
+                           oracle_invoice_date,  
+                           part_number,
+                           pf_inv_date,
+                           oracle_order_date,
+                           oracle_order_number,
+                           --oracle_ord_sts,
+                           ar_ebs_table_id,
+                           currency
+                      FROM (SELECT vmware_sid,
+                                   (SELECT MAX (d2.invoice_customer_trx_id) val
+                                      FROM XXVMSDP.xxvm_sdp_fin_invoices a2,
+                                           XXVMSDP.xxvm_sdp_fin_invoice_lines d2,
+                                           XXVMSDP.xxvm_sdp_fin_pf_inv_dtls e2
+                                     WHERE     1 = 1
+                                           AND a2.invoice_id = d2.invoice_id
+                                           AND e2.invoice_line_id =
+                                                  d2.invoice_line_id
+                                           AND e2.pf_invoice_num =
+                                                  e.pf_invoice_num)
+                                      bill_flag_value,
+                                   --(SELECT flow_status_code
+                                     -- FROM apps.oe_order_headers_all
+                                     --WHERE order_number = d.sales_order_number)
+                                      --oracle_ord_sts,
+                                   e.pf_invoice_num,
+                                   ROUND (SYSDATE - e.pf_inv_date) aging_days,
+                                   CASE
+                                      WHEN ROUND (SYSDATE - e.pf_inv_date) <= 30
+                                      THEN
+                                         '0-30'
+                                      WHEN     ROUND (SYSDATE - e.pf_inv_date) >
+                                                  30
+                                           AND ROUND (SYSDATE - e.pf_inv_date) <
+                                                  61
+                                      THEN
+                                         '31-60'
+                                      WHEN     ROUND (SYSDATE - e.pf_inv_date) >
+                                                  60
+                                           AND ROUND (SYSDATE - e.pf_inv_date) <
+                                                  91
+                                      THEN
+                                         '61-90'
+                                      WHEN ROUND (SYSDATE - e.pf_inv_date) > 90
+                                      THEN
+                                         '90+'
+                                   END
+                                      aging_bucket,
+                                   (extended_disti_cost) billing_amt,
+                                   CASE
+                                      WHEN (   (    d.sales_order_number IS NULL
+                                                AND e.cancel_flag != 'Y'
+                                                AND d.oracle_invoice_number
+                                                       IS NOT NULL
+                                                AND d.oracle_invoice_number !=
+                                                       ' ')
+                                            OR     a.oracle_invoice_number
+                                                      IS NOT NULL
+                                               AND d.oracle_invoice_number != ' '
+                                               AND e.cancel_flag != 'Y')
+                                      THEN
+                                         'BILLED'
+                                      WHEN (    d.sales_order_number IS NULL
+                                            AND e.cancel_flag != 'Y'
+                                            AND d.oracle_invoice_number IS NULL)
+                                      THEN
+                                         'UNBILLED'
+                                      WHEN (    d.sales_order_number IS NOT NULL
+                                            AND d.oracle_invoice_number
+                                                   IS NOT NULL
+                                            AND e.cancel_flag != 'Y')
+                                      THEN
+                                         'BILLED'
+                                      WHEN e.cancel_flag = 'Y' 
+                                   
+                                      THEN
+                                         'Cancelled'
+                                      ELSE
+                                         'UNBILLED'
+                                   END
+                                      proforma_line_status,
+                                   e.cancel_flag cncf,
+                                   e.inv_type,
+                                   d.customer_po_number,
+                                   disti_cust_name,
+                                   e.start_date,
+                                   e.end_date,
+                                   end_cust_name,
+                                   e.RESELLER_CUST_NAME,
+                                   -- TO_CHAR (e.pf_inv_date, 'Month') pf_month,
+                                   -- EXTRACT (YEAR FROM e.pf_inv_date) pf_year,
+                                   TO_CHAR (e.creation_date, 'Month') pf_month,
+                                   EXTRACT (YEAR FROM e.creation_date) pf_year,
+                                   DECODE (d.oracle_invoice_number,
+                                           NULL, a.oracle_invoice_number,
+                                           d.oracle_invoice_number)
+                                      oracle_invoice_number,
+                                   DECODE (d.oracle_invoice_date,
+                                           NULL, a.oracle_invoice_date,
+                                           d.oracle_invoice_date)
+                                      oracle_invoice_date,
+                                   part_number,
+                                   --e.pf_inv_date,
+                                   e.creation_date pf_inv_date,
+                                   d.sales_order_date oracle_order_date,
+                                   d.sales_order_number oracle_order_number,
+                                   d.invoice_customer_trx_id ar_ebs_table_id,
+                                   e.currency,
+                                   e.cancel_flag cancel_flag,
+                                   a.sales_order_number head_order,
+                                   a.oracle_invoice_number head_invoice,
+                                   a.ar_invoice_total
+                                   
+                              FROM XXVMSDP.XXVM_SDP_FIN_INVOICES a,
+                                   XXVMSDP.XXVM_SDP_FIN_INVOICE_LINES d,
+                                   XXVMSDP.XXVM_SDP_FIN_PF_INV_DTLS e
+                             WHERE     1 = 1
+                                   AND e.invoice_line_id = d.invoice_line_id
+                                   AND a.invoice_id = d.invoice_id) tt1
+                     WHERE 1 = 1
+                  ORDER BY pf_invoice_num) tt2
+           WHERE 1 = 1 AND proforma_line_status = 'BILLED' 
+       GROUP BY pf_invoice_num) t3
+WHERE t2.pf_invoice_num = t3.pf_invoice_num
+ --AND 
+  --t2.pf_invoice_num='PF_950034045' 
+  --t2.pf_invoice_num='PF_950003091' 
+ --t2.pf_invoice_num='PF_950073550'
+
+
+ 
+
