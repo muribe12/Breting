@@ -1,4 +1,6 @@
+
 SELECT t2.vmware_sid,
+		s.product_family_code,
        t2.pf_invoice_num,
        t2.disti_geo,
        t2.aging_days,
@@ -102,6 +104,7 @@ SELECT t2.vmware_sid,
                  part_number,
                  pf_inv_date,
                  oracle_order_date,
+                 base_SKU_DESCRIPTION,
                  oracle_order_number,
                  --oracle_ord_sts,
                  ar_ebs_table_id,
@@ -376,17 +379,18 @@ SELECT t2.vmware_sid,
                                  NULL, a.oracle_invoice_number,
                                  d.oracle_invoice_number)
                             oracle_invoice_number,
-                         --  d.oracle_invoice_date,
+
                          DECODE (d.oracle_invoice_date,
                                  NULL, a.oracle_invoice_date,
                                  d.oracle_invoice_date)
                             oracle_invoice_date,
                          part_number,                --    HSV-A1ACR-03MT0-C1S
-                         --e.pf_inv_date,      -- proforma_date    7/4/2013 8:01
+
                          e.creation_date pf_inv_date,
                          d.sales_order_date oracle_order_date, --    8/14/2013
                          d.sales_order_number oracle_order_number, --   11643738 (as “billing order” in extract)
                          d.invoice_customer_trx_id ar_ebs_table_id,
+                         d.BASE_SKU_DESCRIPTION, 
                          e.currency,
                          e.cancel_flag cancel_flag,
                          a.sales_order_number head_order,
@@ -398,15 +402,15 @@ SELECT t2.vmware_sid,
                    WHERE     1 = 1
                          AND e.invoice_line_id = d.invoice_line_id
                          AND a.invoice_id = d.invoice_id) t1
-           WHERE 1 = 1 -- and pf_invoice_num ='PF_950005375'
-        ORDER BY pf_invoice_num) t2,
+           WHERE 1 = 1 
+        ORDER BY pf_invoice_num DESC) t2
+               LEFT JOIN XXVMSDP.XXVM_SDP_SERVICE_INSTANCES S ON s.SERVICE_INSTANCE_NAME = t2.vmware_sid,
        (  SELECT pf_invoice_num, COUNT (proforma_line_status) ATLEAST_1
             FROM (  SELECT cancel_flag,
                            bill_flag_value,
                            head_invoice head_order,
                            head_invoice,
                            ar_invoice_total,
-                           --head_line,
                            vmware_sid,
                            pf_invoice_num,
                            aging_days,
@@ -419,9 +423,8 @@ SELECT t2.vmware_sid,
                                     AND cancel_flaG = 'N')
                               THEN
                                  'BILLED'
-                              WHEN (   cancel_flag = 'Y'
-                                    --OR oracle_ord_sts = 'CANCELLED'
-                                    )
+                              WHEN  cancel_flag = 'Y'
+                                    
                               THEN
                                  'Cancelled'
                               ELSE
@@ -452,7 +455,6 @@ SELECT t2.vmware_sid,
                            pf_inv_date,
                            oracle_order_date,
                            oracle_order_number,
-                           --oracle_ord_sts,
                            ar_ebs_table_id,
                            currency
                       FROM (SELECT vmware_sid,
@@ -467,10 +469,6 @@ SELECT t2.vmware_sid,
                                            AND e2.pf_invoice_num =
                                                   e.pf_invoice_num)
                                       bill_flag_value,
-                                   --(SELECT flow_status_code
-                                     -- FROM apps.oe_order_headers_all
-                                     --WHERE order_number = d.sales_order_number)
-                                      --oracle_ord_sts,
                                    e.pf_invoice_num,
                                    ROUND (SYSDATE - e.pf_inv_date) aging_days,
                                    CASE
@@ -555,6 +553,7 @@ SELECT t2.vmware_sid,
                                    d.invoice_customer_trx_id ar_ebs_table_id,
                                    e.currency,
                                    e.cancel_flag cancel_flag,
+                                   d.base_sku_description,
                                    a.sales_order_number head_order,
                                    a.oracle_invoice_number head_invoice,
                                    a.ar_invoice_total
@@ -566,15 +565,9 @@ SELECT t2.vmware_sid,
                                    AND e.invoice_line_id = d.invoice_line_id
                                    AND a.invoice_id = d.invoice_id) tt1
                      WHERE 1 = 1
-                  ORDER BY pf_invoice_num) tt2
-           WHERE 1 = 1 AND proforma_line_status = 'BILLED' 
+                  ORDER BY pf_invoice_num DESC) tt2
+           WHERE 1 = 1 
+           	--AND proforma_line_status = 'BILLED'
        GROUP BY pf_invoice_num) t3
-WHERE t2.pf_invoice_num = t3.pf_invoice_num
- --AND 
-  --t2.pf_invoice_num='PF_950034045' 
-  --t2.pf_invoice_num='PF_950003091' 
- --t2.pf_invoice_num='PF_950073550'
 
-
- 
-
+WHERE t2.pf_invoice_num = t3.pf_invoice_num 
