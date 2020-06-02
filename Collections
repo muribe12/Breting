@@ -1,4 +1,3 @@
-
 SELECT t2.vmware_sid,
 		s.product_family_code,
        t2.pf_invoice_num,
@@ -404,7 +403,7 @@ SELECT t2.vmware_sid,
                          AND a.invoice_id = d.invoice_id) t1
            WHERE 1 = 1 
         ORDER BY pf_invoice_num DESC) t2
-               LEFT JOIN XXVMSDP.XXVM_SDP_SERVICE_INSTANCES S ON s.SERVICE_INSTANCE_NAME = t2.vmware_sid,
+               LEFT JOIN (SELECT DISTINCT SERVICE_INSTANCE_NAME,product_family_code FROM XXVMSDP.XXVM_SDP_SERVICE_INSTANCES) S ON s.SERVICE_INSTANCE_NAME = t2.vmware_sid,
        (  SELECT pf_invoice_num, COUNT (proforma_line_status) ATLEAST_1
             FROM (  SELECT cancel_flag,
                            bill_flag_value,
