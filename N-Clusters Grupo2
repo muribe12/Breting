@@ -1,0 +1,27 @@
+install.packages("factoextra")
+library(xtable)
+library(knitr)
+library(kableExtra)  
+library(factoextra)
+
+df <- read.csv("C:/Users/muribe/Documents/Happiness.csv") #reading file after treating it in excel, there must be a way to extract only 2012
+
+df <- df[-c(1:4)] #Eliminate text columns to compute other functions, there must be other treatment to not loose labels
+head(df)
+
+df <- scale(df)
+kable(dt) %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position ="left")#   "float_right") #scaling data
+options(max.print=999999)
+
+distance <- get_dist(df)
+print(distance)
+
+fviz_dist(distance, gradient = list(low = "#00AFBB", mid = "white", high = "#387c2c"))
+
+dfk3 <- kmeans(na.omit(df), centers = 4, nstart = 75)  #questions regarding how to set the 'elbow' or if this is being computed
+str(dfk3)
+print(dfk3)
+
+
+fviz_cluster(dfk3, data = na.omit(df))
