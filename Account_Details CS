@@ -1,0 +1,124 @@
+
+With sddc as (
+			SELECT dim_org_id, 
+					dim_sddc_id, 
+					dim_date_id, 
+					SUM(host_count) as host_count, 
+					SUM(cluster_count) as cluster_count
+			FROM vmc_dw.fact_sddc_daily
+			WHERE ss__processed_ts = (SELECT MAX(ss__processed_ts) FROM vmc_dw.fact_sddc_daily)
+			--AND dim_org_id = '0c5dc398-874f-4a0d-8342-cdbb61575d5c'
+			AND dim_date_id = (SELECT MAX(dim_date_id ) FROM vmc_dw.fact_sddc_daily)
+			GROUP BY dim_org_id, 
+					dim_sddc_id, 
+					dim_date_id
+			ORDER BY dim_org_id, dim_date_id DESC ),
+
+vms as ( 
+		SELECT v.dim_org_id, 
+				v.dim_sddc_id, 
+				SUM(v.vm_count) as vm_count 
+		FROM vmc_dw.fact_sddc_vm_app_daily v
+		
+		INNER JOIN (
+					SELECT dim_org_id, 
+					dim_sddc_id, 
+					dim_date_id, 
+					SUM(host_count) as host_count, 
+					SUM(cluster_count) as cluster_count
+			FROM vmc_dw.fact_sddc_daily
+			WHERE ss__processed_ts = (SELECT MAX(ss__processed_ts) FROM vmc_dw.fact_sddc_daily)
+			--AND dim_org_id = '0c5dc398-874f-4a0d-8342-cdbb61575d5c'
+			AND dim_date_id = (SELECT MAX(dim_date_id ) FROM vmc_dw.fact_sddc_daily)
+			GROUP BY dim_org_id, 
+					dim_sddc_id, 
+					dim_date_id
+			ORDER BY dim_org_id, 
+					dim_date_id DESC ) sddc	 ON (sddc.dim_sddc_id=v.dim_sddc_id )
+					
+		WHERE ss__processed_ts = (SELECT MAX(ss__processed_ts) FROM vmc_dw.fact_sddc_vm_app_daily)
+		GROUP BY v.dim_org_id, v.dim_sddc_id ),
+		
+sddc_details as (SELECT v.dim_org_id, 
+						v.dim_sddc_id, 
+						v.sddc_name, 
+						v.sddc_created_ts, 
+						v.cloud_provider_region as aws_region,
+						UPPER( v.aws_az_one) as aws_az_one,
+						UPPER(v.aws_az_two) as aws_az_two, 
+						v.vmc_version
+				FROM vmc_dw.dim_sddc v 
+			
+				INNER JOIN (
+							SELECT dim_org_id,
+							dim_sddc_id, 
+							dim_date_id, 
+							SUM(host_count) as host_count, 
+							SUM(cluster_count) as cluster_count
+				FROM vmc_dw.fact_sddc_daily
+				WHERE ss__processed_ts = (SELECT MAX(ss__processed_ts) FROM vmc_dw.fact_sddc_daily)
+				--AND dim_org_id = '0c5dc398-874f-4a0d-8342-cdbb61575d5c'
+				AND dim_date_id = (SELECT MAX(dim_date_id ) FROM vmc_dw.fact_sddc_daily)
+				GROUP BY dim_org_id, 
+						dim_sddc_id,
+						dim_date_id
+				ORDER BY dim_org_id, 
+						dim_date_id DESC ) sddc	ON (sddc.dim_sddc_id=v.dim_sddc_id )
+				
+				WHERE ss__processed_ts = (SELECT MAX(ss__processed_ts ) FROM vmc_dw.dim_sddc)
+				GROUP BY v.dim_org_id, 
+				v.dim_sddc_id, 
+				v.sddc_name, 
+				v.sddc_created_ts, 
+				v.cloud_provider_region,
+				v.aws_az_one, 
+				v.aws_az_two, 
+				v.vmc_version)
+				
+SELECT cs.org_id, 
+		cs.account_name, 
+		cs.csa_name, 
+		cs.csm_name, 
+		cs.region, 
+		cs.sub_region, 
+		cs.geo,
+		o.org_display_name, 
+		a.dim_sddc_id, 
+		a.host_count, 
+		a.cluster_count, 
+		b.vm_count, 
+		c.sddc_name,
+		c.sddc_created_ts, 
+		c.aws_region, 
+		c.aws_az_one, 
+		c.aws_az_two, 
+		c.vmc_version 
+		
+FROM starshot_lake.gainsight_customer_relations cs
+
+	LEFT JOIN vmc_dw.dim_org o ON (cs.org_id = o.dim_org_id)
+	LEFT JOIN sddc a ON (a.dim_org_id=cs.org_id)
+	LEFT JOIN vms b on (b.dim_org_id=cs.org_id )
+	
+	LEFT JOIN sddc_details c ON (c.dim_org_id=cs.org_id )
+WHERE cs.pa__processed_ts = (SELECT MAX(pa__processed_ts) FROM starshot_lake.gainsight_customer_relations)
+AND o.ss__processed_ts = (SELECT MAX(ss__processed_ts) FROM vmc_dw.dim_org )
+
+GROUP BY cs.org_id, 
+		cs.account_name, 
+		cs.csa_name, 
+		cs.csm_name, 
+		cs.region, 
+		cs.sub_region, 
+		cs.geo,
+		o.org_display_name, 
+		a.dim_sddc_id, 
+		a.host_count, 
+		a.cluster_count, 
+		b.vm_count, 
+		c.sddc_name,
+		c.sddc_created_ts, 
+		c.aws_region, 
+		c.aws_az_one, 
+		c.aws_az_two, 
+		c.vmc_version 
