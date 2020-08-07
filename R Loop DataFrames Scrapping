@@ -1,0 +1,58 @@
+library(pdftools)
+library(tidyr)
+library(sqldf)
+
+sDirectorio = "/Users/muribe/Desktop"
+
+archivoPDF = pdftools::pdf_text(file.path(sDirectorio,"centros_votacion.pdf"))
+
+n = 1
+
+repeat { 
+        if (n <50) {
+
+        vLineas = unlist( strsplit(archivoPDF[n], split = c("\r\n")) )
+
+        dfDefinicionTabla = data.frame( Orden  = 1:9,
+                                        Campo  = c("Codigo","Provincia","Canton","Distrito","JRVInicial","JRVFinal","TotalJRV","TipoCentro","CentroVotacion"),
+                                        Inicio = c(1,8,21,36,75,86,97,104,127),
+                                        Fin    = c(7,20,35,74,85,96,103,126,180),
+                                        Tipo   = c("numeric","character","character","character","numeric","numeric","numeric","character","character"),
+                                        stringsAsFactors = FALSE)
+
+        dfTabla = data.frame()
+       
+        for (linea in 7:length(vLineas)) {
+          
+          dfFila = data.frame(n, stringsAsFactors = FALSE)
+          for (campo in 1:nrow(dfDefinicionTabla)){
+            # campo = 2
+            # Extrae cada uno de los campos de la linea  
+            dfFila =cbind(dfFila, trimws(substr( vLineas[linea], 
+                                                 dfDefinicionTabla[campo,]$Inicio, 
+                                                 dfDefinicionTabla[campo,]$Fin), 
+                                         which = "both") 
+            )
+            
+          }
+  
+          colnames(dfFila)[2:(nrow(dfDefinicionTabla)+1)] = dfDefinicionTabla$Campo
+          
+          dfTabla = rbind(dfTabla, dfFila)
+          
+          assign(paste0("df",n),dfTabla)
+
+        } 
+        n = n + 1  } else break }
+
+dfTabla
+
+df <- rbind(df1,df2,df3,df4,df5,df6,df7)  
+
+df
+
+print(df5) 
+
+print(c(paste0("df",n)))   
+
+sqldf("SELECT COUNT(distinct(canton)) FROM dfTabla")
