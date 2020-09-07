@@ -1,0 +1,142 @@
+install.packages(c("tidyverse","rvest", "algorithmia"))
+
+library(tidyverse)
+library(rvest)
+library(algorithmia)
+
+RAIZ_URL <- 'http://books.toscrape.com/catalogue/'
+url <- paste(RAIZ_URL, 'page-1.html', sep="")
+
+obtener_siguiente_pagina <- function(html){
+  
+  siguiente_pagina <- html %>%
+    html_nodes(".next a") %>% #Cambie "COMPLETE_AQUI" por el valor ".next a",
+    html_attr("href") #Al igual que con las paginas, necesitamos el atributo href
+
+  if (length(siguiente_pagina) > 0){
+    return(paste(RAIZ_URL, str_trim(siguiente_pagina[1]), sep=""))                                   
+  }
+  else {
+    return(NULL)
+  }
+}
+
+
+  
+obtener_imagen_libro <- function(html) {
+    
+    html %>%
+      html_nodes('div.thumbnail img') %>% # Reemplace "COMPLETE_AQUI" por "div.thumbnail img"
+      html_attr('src') %>% # Reemplace "COMPLETE_AQUI" por "src"
+      str_trim() %>%                       
+      unlist()     
+  }
+  
+obtener_datos_del_libro <- function(url){
+    html <- read_html(url)
+    convertir_datos_a_tabla(html)
+  }
+
+
+obtener_titulo_libro <- function(html) {
+    
+    html %>%
+      html_nodes('.product_main h1') %>% #Reemplace "COMPLETE_AQUI" por ".product_main h1"
+      html_text() %>% 
+      str_trim() %>%                       
+      unlist()     
+  }
+
+  obtener_descripcion_libro <- function(html){
+    html %>% 
+      html_nodes('.product_page > p') %>% #Reemplace "COMPLETE_AQUI" por ".product_page > p"
+      html_text() %>% 
+      str_trim() %>%                       
+      unlist()                             
+  }
+
+  
+  obtener_etiquetas_descripcion <- function(descripcion) {
+    cliente <- getAlgorithmiaClient("simEwJUJH9ksHaBC7isjd6hV8g61")
+    algoritmo <- cliente$algo("nlp/AutoTag/1.0.1")
+    algoritmo$setOptions(timeout=300)
+    result <- algoritmo$pipe(descripcion)$result
+    unlist(result)
+  }
+  
+  obtener_atributo_tabla <- function(html, titulo){
+    html %>% 
+      html_nodes(paste("tr:contains('", titulo ,"') td", sep="")) %>%      
+      html_text() %>% 
+      str_trim() %>%                       
+      unlist()                             
+  } 
+  
+  iniciar_extraccion <- function(url, nombreTabla){
+    link_libros <- c()
+    while(!is.null(url)){
+      pagina <- read_html(url)
+      libros <- pagina %>%
+        html_nodes("li .image_container a") %>%
+        html_attr("href") %>%
+        str_trim() %>%
+        map(function(libro) paste(RAIZ_URL, libro, sep="")) %>%
+        unlist()
+
+            for (l in libros)
+        link_libros <- c(link_libros, l)
+
+      url <- obtener_siguiente_pagina(pagina)
+    }  
+    
+    link_libros %>% 
+      map(obtener_datos_del_libro) %>%  
+      bind_rows() %>%                           
+      write_tsv(str_c(nombreTabla,'.tsv'))
+  }    
+
+
+
+  convertir_datos_a_tabla <- function(html){
+
+    imagen <- obtener_imagen_libro(html)
+    titulo <- obtener_titulo_libro(html)
+    descripcion <- obtener_descripcion_libro(html)
+    UPC <- obtener_atributo_tabla(html, "UPC")
+    tipoProducto <- obtener_atributo_tabla(html, "Product Type")
+    precioSinImpuestos <- obtener_atributo_tabla(html, "Price (excl. tax)")
+    precioConImpuestos <- obtener_atributo_tabla(html, "Price (incl. tax)")
+    impuesto <- obtener_atributo_tabla(html, "Tax")
+    stock <- obtener_atributo_tabla(html, "Availability")
+    cantidadResenias <- obtener_atributo_tabla(html, "Number of reviews")
+    
+
+    datos_combinados <- tibble(titulo,
+                               descripcion,
+                               imagen,
+                               UPC,
+                               tipoProducto,
+                               precioSinImpuestos,
+                               precioConImpuestos,
+                               impuesto,
+                               stock,
+                               cantidadResenias)
+    
+    return(datos_combinados)
+  }
+
+  iniciar_extraccion(url, 'toscrape') 
+  tabla_toscrape <- read_tsv('toscrape.tsv')
+  ultimosLibros <- tail(tabla_toscrape, 10) 
+  
+  
+
+  etiquetas <- ultimosLibros$descripcion %>% 
+    map(obtener_etiquetas_descripcion)
+
+  print(ultimosLibros$descripcion[1])
+  print(etiquetas[[1]])  
+
+  rio::convert('toscrape.tsv', 'toscrape.csv')
+  rio::export(tabla_toscrape, "toscrape.csv")
+  
