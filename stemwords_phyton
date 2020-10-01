@@ -1,0 +1,58 @@
+import string
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+import notebooksalamode as mode
+ 
+# Accept the file name from user. 
+ 
+#fname = input('Enter the file name: ')
+ 
+try:
+    fhand = datasets['NPS DataSet']['customer nps comments']
+except:
+    print('File cannot be opened:', fname)
+    exit()
+ 
+counts = dict()              # create and initialize a dictionary
+lmtzr = WordNetLemmatizer()
+# Import the corpus of English stop words
+stop = stopwords.words('english')
+ 
+for line in fhand:
+    line = line.rstrip()              # strips the line of spaces
+    line = line.translate(line.maketrans('','',string.punctuation))     # removes puncutations from the line
+     
+    line = line.lower()               # convert the line to lower case
+    words = line.split()              # split the line into words
+ 
+# Remove stop words
+    for word in words:
+        if word not in stop:
+            # Lemmatize - Lemmatizing is similar to stemming but reduces the word to its root as defined in the dictionary
+            lmtzr.lemmatize(word)
+            # Now add to counts dictionary if it does not exist
+             
+            if not word.isdigit():       # digits should be ignored
+               if word not in counts:
+                   counts[word] = 1
+               else:
+                   counts[word] += 1
+ 
+word_list = [(counts[w], w) for w in counts]        #create a list count and words
+word_list.sort()              # sorts the list
+word_list.reverse()           # reverse the list to show the top 60 words in descending order
+
+#print("The 120 most frequent words are")
+print("Rank\tCount\tWord")
+ 
+i = 1
+ 
+# Print the top 60 words from the list
+ 
+for x, word in word_list[:120]:                 
+    print('%2s\t%4s\t%s' %(i, x, word))
+    i += 1
+
+mode.export_csv(wordlist)
+
+# End of Script
