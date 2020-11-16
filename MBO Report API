@@ -1,0 +1,36 @@
+library(RPostgreSQL)
+library(DBI)
+
+
+drv <- dbDriver('PostgreSQL')
+
+conn <- dbConnect(drv, dbname = 'hdw_sse', user = "muribe", password = "L@vanda!2345", host = 'hdp-sse-mst2.vmware.com',port=5432)
+
+
+#Stores both data sets
+
+msp_mbo_ussage_data <- read.csv("C:\\Users\\muribe\\VMware, Inc\\SaaS Advanced Analytics - EDA - Documents\\MSP MBO Data Sources\\msp_mbo_ussage_data.csv",sep="\t",header=T,fileEncoding="UTF-16LE")
+
+#typeof(msp_mbo_ussage_data)
+
+msp_mbo_report_crosstab <- read.csv("C:\\Users\\muribe\\VMware, Inc\\SaaS Advanced Analytics - EDA - Documents\\MSP MBO Data Sources\\msp_mbo_report_crosstab.csv",sep="\t",header=T,fileEncoding="UTF-16LE")
+
+
+# Check the loading
+#head(msp_mbo_ussage_data)
+
+#head(msp_mbo_report_crosstab)
+
+#dbListTables(conn)
+
+
+#overwrite each of the tables with the datasets
+
+dbWriteTable(conn, name="public.msp_mbo_ussage_data", msp_mbo_ussage_data, overwrite=TRUE, row.names=FALSE)
+
+dbWriteTable(conn, name="public.msp_mbo_report_crosstab", msp_mbo_report_crosstab, overwrite=TRUE, row.names=FALSE)
+
+dbGetQuery(conn, "Select * from public.msp_mbo_ussage_data limit 10")
+dbGetQuery(conn, "Select * from public.msp_mbo_report_crosstab limit 10")
+
+dbDisconnect(conn)
