@@ -1,0 +1,28 @@
+install.packages("RDCOMClient")
+install.packages("taskscheduleR")
+
+
+library("RDCOMClient")
+library("taskscheduleR")
+
+OutApp <- COMCreate("Outlook.Application")
+
+cron_add(<command>, "daily", at="7AM")
+
+## create an email
+outMail = OutApp$CreateItem(0)
+
+## configure email parameter
+outMail[["To"]] = "abc@gmail.com"
+outMail[["subject"]] = "Test Email"
+outMail[["body"]] = "Hi, You have a New Alarm"
+outMail[["attachments"]]$Add("C:/Path/To/The/Attachment/File.ext")
+outMail[["attachments"]]$Add("C:/Path/To/The/Attachment/File2.ext")
+
+## send it
+outMail$Send()
+
+taskscheduler_create(taskname = "test_run", rscript = "Desktop/send_alarm.R", 
+                     schedule = "HOURLY", starttime = format(Sys.time() + 50, "%H:%M"), modifier = 2)
+
+
