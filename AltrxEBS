@@ -1,0 +1,36 @@
+with fiscal_calendar as 
+	(
+	select c.CAL_DATE,
+		gl.* 
+	from XXVMSDP.XXVM_GL_PERIODS_MV gl 
+		cross join 
+		(
+		select To_Date('02/01/2018', 'mm/dd/yyyy') + Level - 1 as cal_date 
+		from dual Connect by Level <= To_Date('02/01/2028', 'mm/dd/yyyy') - To_Date('02/01/2018', 'mm/dd/yyyy') + 1
+		) c 
+	where c.CAL_DATE Between gl.START_DATE 
+		and gl.END_DATE 
+	order by c.cal_date
+	) 
+select xl.PF_INVOICE_NUMBER as INVOICE_DOCUMENT,
+	xl.HOLD_RELEASED_BY as RELEASED_BY,
+	xl.PF_CREATION_DATE as CREATION_DATE,
+	xl.HOLD_RELEASED_DATE as RELEASE_DATE,
+	case 
+			when xl.HOLD_RELEASED_BY = 'SYSTEM' or xl.HOLD_RELEASED_BY = 'MIDDLEWARE' then 'Y' 
+			else 'N' 
+		end AUTOMATION,
+	xl.PRODUCT_FAMILY,
+	fc.PERIOD_NAME as RELEASED_FISCAL_MONTH,
+	case 
+			when xl.HOLD_RELEASED_DATE is not NULL then 'FY' || SubStr(fc.PERIOD_YEAR, 3, 2) || 'Q' || fc.QUARTER_NUM 
+			else '' 
+		end RELEASED_FISCAL_QUARTER,
+	pd.ATTRIBUTE1 as DISTI_GEO 
+from XXVMSDP.XXVM_SAAS_PF_HDR_DTLS_TBL xl 
+	left join fiscal_calendar fc on (To_Date(fc.CAL_DATE) = To_Date(xl.HOLD_RELEASED_DATE)) 
+	left join XXVMSDP.XXVM_PARTNER_DATA pd on (xl.DISTI_PRM_ID = pd.PRM_ID) 
+where xl.HOLD_RELEASED_DATE is not NULL 
+	and xl.PF_TRANSACTION_STATUS is not NULL 
+	and xl.PF_TRANSACTION_STATUS <> 'Cancelled' 
+order by CREATION_DATE desc
