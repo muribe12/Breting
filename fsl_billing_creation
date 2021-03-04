@@ -1,0 +1,112 @@
+select a.invoice_document_number as invoice_document,
+	a.cfc_lock_user as released_by,
+	coalesce(a.cfc_crdate,a.baseline_date) as CREATION_DATE,
+	a.fsl_sent_date as RELEASE_DATE,
+	'N' as AUTOMATION,
+	a.product_family_code as PRODUCT_FAMILY,
+	a.released_fiscal_month as released_fiscal_month,
+	a.released_fiscal_qtr as released_fiscal_quarter,
+	a.disti_geo
+from (select * from 
+(with invoice_data as (
+select
+	*
+from
+	(
+	select
+		row_number() over(partition by invoice_document_number
+	order by
+		billdocno_item asc) as "rn" ,
+		*
+	from
+		base.vfct_invoice_document ) inv
+where
+	inv.rn = 1 )
+select
+	inv.CONTRACT_ACCOUNT_NUMBER,
+	inv.INVOICE_DOCUMENT_NUMBER,
+	case
+		when inv.zz_fsl_flag = 'Y' and inv.fsl_sent_date is not null
+		then 'RELEASED'
+		when inv.hold_flag = 'Y' then 'ON_HOLD'
+	end "status",
+	inv.DOCUMENT_TYPE,
+	inv.ITEMTYPE_TEXT,
+	inv.FSL_BILLING_DOCUMENT_TYPE,
+	inv.fsl_invoice_id,
+	inv.CREATION_DATE,
+	inv.FSL_SENT_DATE,
+	inv.FSL_PAYMENT_DATE,
+	inv.BASELINE_DATE,
+	inv.cfc_crdate,
+	inv.FSL_PAYMENT_METHOD_TYPE,
+	inv_fis.FIS_YEAR2QTRNAME as released_fiscal_qtr,
+	inv_fis.fis_month as released_fiscal_month,
+	inv.FSL_PAYMENT_STATUS,
+	crm_account.ACCOUNT_NAME,
+	inv.CSP_ORG_ID_PATH,
+	inv.AR_STATUS,
+	inv.HOLD_FLAG,
+	inv.CFC_INVCFCNO,
+	inv.CFC_LOCK_USER,
+	ea.EA_NAME,
+	case
+		when upper(( coalesce(inv.PAYMENT_METHOD_CUSTOM, 'NULL') )) like '%COMMIT%' then 'MSP'
+		else 'NON-MSP'
+	end,
+	inv.ANNIVERSARY_BILLDAY,
+	inv.PM_TYPE_NAME,
+	inv.PRODUCT_FAMILY_CODE,
+	case
+		when inv.PRODUCT_FAMILY_CODE = 'VELOCLOUD' then inv.SUBSCRIPTION_ACCOUNT_ID
+		else inv.SUBSCRIPTION_ID
+	end,
+	inv.SOURCE,
+	inv.BILLING_DOCUMENT_NUMBER,
+	inv.SUBSCRIPTION_SOURCE,
+	inv.BILLING_FREQUENCY,
+	inv.DATA_CENTER,
+	inv.CUSTOMER_SEGMENT,
+	inv.BILLING_PERIOD_END,
+	inv.BILLING_PERIOD_START,
+	inv.ZZ_FSL_FLAG,
+	inv.business_partner,
+	inv.cfc_cfcreason,
+	inv.ITEMTYPE,
+	cast(inv.CONTRACT_START_DATE as date),
+	cast(inv.CONTRACT_END_DATE as date),
+	inv.COMPANY_CODE,
+	inv.EA_NUMBER,
+	inv.CONTRACT_NUMBER,
+	inv.CURRENCY_CODE,
+	inv.cfc_reason_code,
+	inv.OFFER_TYPE,
+	inv.BILLING_DAYS,
+	coalesce(inv.PAYMENT_METHOD_CUSTOM, 'NULL'),
+	inv.AR_INVOICE_NUMBER,
+	inv.INVOICE_TOTAL,
+	inv.INVOICE_TOTAL_USD,
+	inv.ZZ_DISCAMOUNT,
+	case when inv.company_code = 'US10' and vp.disti_geo is null then 'AMER'
+	else vp.disti_geo end disti_geo
+from
+	(
+	select
+		distinct account_id,
+		account_name,
+		prim_identification_number
+	from
+		base.vdim_sap_crm_account
+	order by
+		account_id desc) crm_account
+right outer join invoice_data inv on
+	(inv.business_partner = crm_account.account_id )
+left join base.vdim_partner vp on 
+	(crm_account.prim_identification_number =vp.partner_id)
+left join base.vdim_ems_entitlement_account ea on
+	(inv.ea_number = ea.ea_number )
+left join base.vdim_cal_date inv_fis on
+	(cast(inv.FSL_SENT_DATE as date) = cast(inv_fis.cal_date as date))
+where inv.source = 'FSL'
+and inv.fsl_billing_document_type <> 'CREDITMEMO'
+and inv.ZZ_FSL_FLAG = 'Y') a ) a
